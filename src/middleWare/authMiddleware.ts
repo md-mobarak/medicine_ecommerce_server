@@ -1,38 +1,42 @@
-import { Request, Response, NextFunction, RequestHandler } from 'express';
-import jwt from 'jsonwebtoken';
-import User, { IUser } from '../modules/user/userModel';
+import { RequestHandler } from "express";
+import jwt, { Secret } from "jsonwebtoken";
 
-interface AuthRequest extends Request {
-  user?: IUser;
-}
-
-export const protect: RequestHandler = async (req, res, next): Promise<void> => {
-  let token: string | undefined;
-
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    token = req.headers.authorization.split(' ')[1];
+const auth: RequestHandler = async (req: any, res: any, next: any) => {
+  if (!req?.headers) {
+    return res.status(401).json({
+      success: false,
+      statusCode: 401,
+      message: "Unauthorized user access",
+    });
   }
-
-  if (!token) {
-    res.status(401).json({ success: false, message: 'Not authorized to access this resource' });
-    return;
-  }
-
+  let verifiedToken;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { id: string };
-    req.user = await User.findById(decoded.id).select('-password');
+    // Get authorization token
+    const token = req.header("authorization")?.replace("Bearer ", "");
+    // console.log(token);
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        statusCode: 401,
+        message: "Access denied",
+      });
+    }
+    // Verify the token
+    verifiedToken = jwt.verify(token, process.env.ACCESS_SECRET as Secret);
+    // console.log(verifiedToken);
+
+    // Assign the user to the request object
+    req.user = verifiedToken;
+
     next();
-  } catch (error) {
-    res.status(401).json({ success: false, message: 'Not authorized to access this resource' });
+  } catch (err: any) {
+    return res.status(401).json({
+      success: false,
+      statusCode: 401,
+      message: err.message,
+    });
   }
 };
 
-export const authorize = (...roles: Array<IUser['role']>) => {
-  return (req: AuthRequest, res: Response, next: NextFunction): void => {
-    if (!roles.includes(req.user?.role as IUser['role'])) {
-      res.status(403).json({ success: false, message: `User role ${req.user?.role} is not authorized to access this resource` });
-      return;
-    }
-    next();
-  };
-};
+export default auth;

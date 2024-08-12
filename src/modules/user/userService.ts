@@ -1,10 +1,8 @@
-import jwt from "jsonwebtoken";
+import jwt, { Secret } from "jsonwebtoken";
 import User, { IUser } from "./userModel";
 
 // Include role in the token
-const generateToken = (user: IUser, expiresIn: string): string => {
-  return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET as string, { expiresIn });
-};
+
 
 export const registerUser = async (users: IUser): Promise<IUser> => {
   const { name, email, password, photo ,role} = users;
@@ -15,16 +13,36 @@ export const registerUser = async (users: IUser): Promise<IUser> => {
 export const loginUser = async (
   email: string,
   password: string
-): Promise<{ user: IUser; token: string; refreshToken: string } | null> => {
+) => {
   const user = await User.findOne({ email });
   if (!user || !(await user.matchPassword(password))) {
     return null;
   }
-
-  const token = generateToken(user, process.env.JWT_EXPIRE as string);
-  const refreshToken = generateToken(user, process.env.REFRESH_TOKEN_EXPIRE as string);
-
-  return { user, token, refreshToken };
+     // Calculate a timestamp that is 1 year ago from the current time
+     const oneYearAgoTimestamp = Math.floor(Date.now() / 1000) - 31536001; // 1 year + 1 second = 31536001 seconds
+     // Generate an access token
+     const accessToken = jwt.sign(
+       {
+         email: email,
+         role: user.role,
+         userId: user.id,
+         iat: oneYearAgoTimestamp,
+       },
+       process.env.ACCESS_SECRET as Secret,
+      //  { expiresIn: "7d" }
+     );
+ 
+     const refreshToken = jwt.sign(
+       {
+         email: email,
+         role: user.role,
+         userId: user.id,
+         iat: oneYearAgoTimestamp,
+       },
+       process.env.REFRESH_SECRET as Secret,
+      //  { expiresIn: "7d" }
+     );
+  return { user, accessToken , refreshToken };
 };
 
 export const getAllUsers = async (): Promise<IUser[]> => {

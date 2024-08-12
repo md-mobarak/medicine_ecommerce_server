@@ -1,6 +1,31 @@
 import { NextFunction, RequestHandler } from 'express';
-import { registerUser, loginUser } from './userService';
-import { getAllUsers, getUserById, updateUser, deleteUser } from './userService';
+import { registerUser, loginUser, getAllUsers, getUserById, updateUser, deleteUser } from './userService';
+
+export const checkAdminOrSuperAdmin = (req: any, res: any): boolean => {
+  if (!req?.headers) {
+    res.status(404).json({
+      success: false,
+      statusCode: 404,
+      message: "Unauthorized access apnar jayga nai",
+      role: req?.user?.role,
+    });
+    return false;
+  }
+  const isAdmin = req?.user?.role === "admin";
+  const isSuperAdmin = req?.user?.role === "super_admin";
+
+  if (!isAdmin && !isSuperAdmin) {
+    res.status(404).json({
+      success: false,
+      statusCode: 404,
+      message: "Unauthorized access ata admin",
+      role: req?.user?.role,
+    });
+    return false;
+  }
+
+  return true;
+};
 
 export const register: RequestHandler = async (req, res) => {
   const { name, email, password, photo } = req.body;
@@ -14,7 +39,7 @@ export const register: RequestHandler = async (req, res) => {
       data: user,
     });
   } catch (error) {
-    res.status(400).json({ success: false, message:error });
+    res.status(400).json({ success: false, message: error });
   }
 };
 
@@ -28,9 +53,14 @@ export const login: RequestHandler = async (req, res) => {
       return;
     }
 
+    // Set the refresh token as a cookie in the response
+    res.cookie("refreshToken", result?.refreshToken, {
+      httpOnly: true,
+    });
+
     res.status(200).json({
       success: true,
-      token: result.token,
+      token: result.accessToken,
       refreshToken: result.refreshToken,
       data: result.user,
     });
@@ -39,50 +69,53 @@ export const login: RequestHandler = async (req, res) => {
   }
 };
 
-export const getAllUsersController: RequestHandler = async (req, res): Promise<void> => {
-    try {
-      const users = await getAllUsers();
-      res.status(200).json({ success: true, data: users });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Server Error' });
-    }
-  };
+export const getAllUsersController: RequestHandler = async (req, res) => {
+  try {
+    const isAuthorized = checkAdminOrSuperAdmin(req, res);
+    if (!isAuthorized) return; // Exit if already responded
 
-  export const getUserByIdController: RequestHandler= async (req, res): Promise<void> => {
-    try {
-      const user = await getUserById(req.params.id);
-      if (!user) {
-        res.status(404).json({ success: false, message: 'User not found' });
-        return;
-      }
-      res.status(200).json({ success: true, data: user });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Server Error' });
-    }
-  };
+    const users = await getAllUsers();
+    return res.status(200).json({ success: true, data: users, role: req?.user?.role });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
 
-  export const updateUserController : RequestHandler= async (req, res): Promise<void> => {
-    try {
-      const user = await updateUser(req.params.id, req.body);
-      if (!user) {
-        res.status(404).json({ success: false, message: 'User not found' });
-        return;
-      }
-      res.status(200).json({ success: true, data: user });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Server Error' });
+export const getUserByIdController: RequestHandler = async (req, res): Promise<void> => {
+  try {
+    const user = await getUserById(req.params.id);
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
     }
-  };
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
 
-  export const deleteUserController : RequestHandler= async (req, res): Promise<void> => {
-    try {
-      const user = await deleteUser(req.params.id);
-      if (!user) {
-        res.status(404).json({ success: false, message: 'User not found' });
-        return;
-      }
-      res.status(200).json({ success: true, message: 'User deleted successfully' });
-    } catch (error) {
-      res.status(500).json({ success: false, message: 'Server Error' });
+export const updateUserController: RequestHandler = async (req, res): Promise<void> => {
+  try {
+    const user = await updateUser(req.params.id, req.body);
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
     }
-  };
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+export const deleteUserController: RequestHandler = async (req, res): Promise<void> => {
+  try {
+    const user = await deleteUser(req.params.id);
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+    res.status(200).json({ success: true, message: 'User deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
