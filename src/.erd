@@ -1,0 +1,48 @@
++------------------+        +----------------+        +------------------+
+|      User        |        |     Order      |        | ShippingAddress  |
++------------------+        +----------------+        +------------------+
+| name             |        | _id            |        | _id              |
+| email            | 1    N | user           | 1    N | division         |
+| password         |--------| totalPrice     |--------| district         |
+| photo            |        | status         |        | subDistrict      |
+| role             |        | products       |        | address          |
+| isVerified       |        | shippingAddress|        | name             |
++------------------+        +----------------+        | phone            |
+                                                   +------------------+
+                     |
+                     |
+                     | M
+                 +-----------------+
+                 |    Product      |
+                 +-----------------+
+                 | name            |
+                 | slug            |
+                 | photos          |
+                 | description     |
+                 | metaKey         |
+                 | price           |
+                 | discount        |
+                 | stockStatus     |
+                 | status          |
+                 +-----------------+
+                     | 1
+                     |
+                     | N
+                +-----------------+
+                |   Category      |
+                +-----------------+
+                | name            |
+                | slug            |
+                | thumbnail       |
+                | type            |
+                +-----------------+
+                
+                     |
+                     |
+                     | N
+                 +-----------------+
+                 |    Variant      |
+                 +-----------------+
+                 | name            |
+                 | price           |
+                 +-----------------+
